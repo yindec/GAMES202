@@ -164,7 +164,7 @@ bool RayMarch(vec3 ori, vec3 dir, out vec3 hitPos) {
   return false;
 }
 
-#define SAMPLE_NUM 1
+#define SAMPLE_NUM 3
 
 // test Screen Space Ray Tracing 
 vec3 EvalReflect(vec3 wi, vec3 wo, vec2 uv) {
@@ -181,7 +181,7 @@ vec3 EvalReflect(vec3 wi, vec3 wo, vec2 uv) {
 }
 
 void main() {
-  // float s = InitRand(gl_FragCoord.xy);  //原本代码有这一行，但是不知其作用，删掉后也能正常运行。
+  float s = InitRand(gl_FragCoord.xy);  //2.3 间接光照用到
 
   vec3 L = vec3(0.0);
   // L = GetGBufferDiffuse(GetScreenCoordinate(vPosWorld.xyz));
@@ -195,8 +195,28 @@ void main() {
   L = EvalDiffuse(wi, wo, screenUV) * EvalDirectionalLight(screenUV);
 
   // Screen Space Ray Tracing 的反射测试
-  L = (GetGBufferDiffuse(screenUV)  + EvalReflect(wi, wo, screenUV)) / 2.0;
+  // L = (GetGBufferDiffuse(screenUV)  + EvalReflect(wi, wo, screenUV)) / 2.0;
+
+  vec3 L_ind = vec3(0.0);
+  for(int i = 0; i < SAMPLE_NUM; i++){
+    float pdf;
+    vec3 localDir = SampleHemisphereCos(s, pdf);
+    vec3 normal = GetGBufferNormalWorld(screenUV);
+    vec3 b1, b2;
+    LocalBasis(normal, b1, b2);
+    vec3 dir = normalize(mat3(b1, b2, normal) * localDir);
+
+    vec3 position_1;
+    if(RayMarch(worldPos, dir, position_1)){
+      vec2 hitScreenUV = GetScreenCoordinate(position_1);
+      L_ind += EvalDiffuse(dir, wo, screenUV) / pdf * EvalDiffuse(wi, dir, hitScreenUV) * EvalDirectionalLight(hitScreenUV);
+    }
+  }
+
+  L_ind /= float(SAMPLE_NUM);
+
+  L = L + L_ind;
+
   vec3 color = pow(clamp(L, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
-  
   gl_FragColor = vec4(vec3(color.rgb), 1.0);
 }
