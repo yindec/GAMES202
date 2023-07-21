@@ -141,13 +141,47 @@ vec3 EvalDirectionalLight(vec2 uv) {
 }
 
 bool RayMarch(vec3 ori, vec3 dir, out vec3 hitPos) {
+  float step = 0.05;
+  const int totalStepTimes = 150;
+  int curStepTimes = 0;
+
+  vec3 stepDir = normalize(dir) * step;
+  vec3 curPos = ori;
+  for (int curStepTimes = 0; curStepTimes < totalStepTimes; ++curStepTimes)
+  {
+    vec2 screenUV = GetScreenCoordinate(curPos);
+    float rayDepth = GetDepth(curPos);
+    float gBufferDepth = GetGBufferDepth(screenUV);
+
+    if(rayDepth - gBufferDepth > 0.0001){
+      hitPos = curPos;
+      return true;
+    }
+
+    curPos += stepDir;
+  }
+
   return false;
 }
 
 #define SAMPLE_NUM 1
 
+// test Screen Space Ray Tracing 
+vec3 EvalReflect(vec3 wi, vec3 wo, vec2 uv) {
+  vec3 worldNormal = GetGBufferNormalWorld(uv);
+  vec3 relfectDir = normalize(reflect(-wo, worldNormal));
+  vec3 hitPos;
+  if(RayMarch(vPosWorld.xyz, relfectDir, hitPos)){
+      vec2 screenUV = GetScreenCoordinate(hitPos);
+      return GetGBufferDiffuse(screenUV);
+  }
+  else{
+    return vec3(0.); 
+  }
+}
+
 void main() {
-  float s = InitRand(gl_FragCoord.xy);
+  // float s = InitRand(gl_FragCoord.xy);  //原本代码有这一行，但是不知其作用，删掉后也能正常运行。
 
   vec3 L = vec3(0.0);
   // L = GetGBufferDiffuse(GetScreenCoordinate(vPosWorld.xyz));
@@ -159,6 +193,9 @@ void main() {
 
   // 直接光照
   L = EvalDiffuse(wi, wo, screenUV) * EvalDirectionalLight(screenUV);
+
+  // Screen Space Ray Tracing 的反射测试
+  L = (GetGBufferDiffuse(screenUV)  + EvalReflect(wi, wo, screenUV)) / 2.0;
   vec3 color = pow(clamp(L, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
   
   gl_FragColor = vec4(vec3(color.rgb), 1.0);
