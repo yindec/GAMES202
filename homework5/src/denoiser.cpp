@@ -120,19 +120,19 @@ Buffer2D<Float3> Denoiser::Filter(const FrameInfo &frameInfo) {
                     auto color = frameInfo.m_beauty(m, n);
 
                     auto d_position = SqrDistance(center_postion, postion) /
-                                      (2.0f * m_sigmaCoord * m_sigmaCoord);
+                                      (2.0f * m_sigmaCoord);
                     auto d_color = SqrDistance(center_color, color) /
-                                   (2.0f * m_sigmaColor * m_sigmaColor);
+                                   (2.0f * m_sigmaColor);
                     auto d_normal = SafeAcos(Dot(center_normal, normal));
                     d_normal *= d_normal;
-                    d_normal / (2.0f * m_sigmaNormal * m_sigmaNormal);
+                    d_normal /= (2.0f * m_sigmaNormal);
 
                     float d_plane = .0f;
                     if (d_position > 0.f) {
                         d_plane = Dot(center_normal, Normalize(postion - center_postion));
                     }
                     d_plane *= d_plane;
-                    d_plane /= (2.0f * m_sigmaPlane * m_sigmaPlane);
+                    d_plane /= (2.0f * m_sigmaPlane);
 
                     float weight = std::exp(-d_plane - d_position - d_color - d_normal);
                     total_weight += weight;
@@ -177,12 +177,12 @@ Buffer2D<Float3> Denoiser::ATrousWaveletFilter(const FrameInfo &frameInfo) {
                         auto color = frameInfo.m_beauty(m, n);
 
                         auto d_position = SqrDistance(center_postion, postion) /
-                                          (2.0f * m_sigmaCoord * m_sigmaCoord);
+                                          (2.0f * m_sigmaCoord);
                         auto d_color = SqrDistance(center_color, color) /
-                                       (2.0f * m_sigmaColor * m_sigmaColor);
+                                       (2.0f * m_sigmaColor);
                         auto d_normal = SafeAcos(Dot(center_normal, normal));
                         d_normal *= d_normal;
-                        d_normal / (2.0f * m_sigmaNormal * m_sigmaNormal);
+                        d_normal /= (2.0f * m_sigmaNormal);
 
                         float d_plane = .0f;
                         if (d_position > 0.f) {
@@ -190,7 +190,7 @@ Buffer2D<Float3> Denoiser::ATrousWaveletFilter(const FrameInfo &frameInfo) {
                                 Dot(center_normal, Normalize(postion - center_postion));
                         }
                         d_plane *= d_plane;
-                        d_plane /= (2.0f * m_sigmaPlane * m_sigmaPlane);
+                        d_plane /= (2.0f * m_sigmaPlane);
 
                         float weight =
                             std::exp(-d_plane - d_position - d_color - d_normal);
@@ -219,7 +219,7 @@ void Denoiser::Maintain(const FrameInfo &frameInfo) { m_preFrameInfo = frameInfo
 Buffer2D<Float3> Denoiser::ProcessFrame(const FrameInfo &frameInfo) {
     // Filter current frame
     Buffer2D<Float3> filteredColor;
-     filteredColor = Filter(frameInfo);
+    filteredColor = Filter(frameInfo);
     //filteredColor = ATrousWaveletFilter(frameInfo);
 
     // Reproject previous frame color to current

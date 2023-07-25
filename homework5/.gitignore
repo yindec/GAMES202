@@ -1,0 +1,11 @@
+/build/
+
+/result/
+
+/src/examples/
+
+/src/*.exe
+
+/src/*.bat
+
+/src/*.mp4
