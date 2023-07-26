@@ -1,0 +1,5 @@
+/prt/build/
+
+/prt/*.exe
+
+/prt/.vs/
