@@ -29,24 +29,11 @@ Vec3f ImportanceSampleGGX(Vec2f Xi, Vec3f N, float roughness) {
 
     float a = roughness * roughness;
 
-    //TODO: in spherical space - Bonus 1
-    float phi = 2.0f * PI * Xi.x;
-    float cosTheta = std::sqrt((1.0f - Xi.y) / (1.0f + (a*a -1.0f) *Xi.y));
-    float sinTheta = std::sqrt(1.0f - cosTheta*cosTheta);
+    // TODO: Copy the code from your previous work - Bonus 1
 
-    //TODO: from spherical space to cartesian space - Bonus 1
-    Vec3f H = Vec3f(sinTheta * std::cos(phi),
-                    sinTheta * std::sin(phi),
-                    cosTheta);
-
-    //TODO: tangent coordinates - Bonus 1
-    Vec3f up = std::abs(N.z) <0.999? Vec3f(0.0f, 0.0f, 1.0f) : Vec3f(1.0f, 0.0f, 0.0f) ;
-    Vec3f T = normalize(cross(up, N));
-    Vec3f B = cross(N, T);
-
-    //TODO: transform H to tangent space - Bonus 1
-    return normalize(T*H.x + B*H.y + N*H.z);
+    return Vec3f(1.0f);
 }
+
 
 Vec3f IntegrateEmu(Vec3f V, float roughness, float NdotV, Vec3f Ei) {
     Vec3f Eavg = Vec3f(0.0f);
@@ -65,10 +52,10 @@ Vec3f IntegrateEmu(Vec3f V, float roughness, float NdotV, Vec3f Ei) {
         float NoV = std::max(dot(N, V), 0.0f);
 
         // TODO: To calculate Eavg here - Bonus 1
-        Eavg += Ei * NoL *2.0f;
+        
     }
 
-    return Eavg / sample_count;
+    return Vec3f(1.0);
 }
 
 void setRGB(int x, int y, float alpha, unsigned char *data) {
