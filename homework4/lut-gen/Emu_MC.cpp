@@ -31,7 +31,7 @@ samplePoints squareToCosineHemisphere(int sample_count){
             double sampley = (p + rng(gen)) / sample_side;
             
             double theta = 0.5f * acos(1 - 2*samplex);
-            double phi =  2 * M_PI * sampley;
+            double phi =  2 * PI * sampley;
             Vec3f wi = Vec3f(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
             float pdf = wi.z / PI;
             
@@ -83,7 +83,23 @@ Vec3f IntegrateBRDF(Vec3f V, float roughness, float NdotV) {
     samplePoints sampleList = squareToCosineHemisphere(sample_count);
     for (int i = 0; i < sample_count; i++) {
       // TODO: To calculate (fr * ni) / p_o here
-      
+        //上门TODO里的ni指光线与法线夹角对辐射能量的修正，p_o指光的密度函数，fr指光线在着色点辐射的能量，也就是颜色。
+        Vec3f L = normalize(sampleList.directions[i]);
+        Vec3f H = normalize(V + L);     //V,L,H origin from shadow point.
+
+        float NdotL = std::max(dot(N, L), 0.0f);
+
+        float NDF = DistributionGGX(N, H, roughness);
+        float G = GeometrySmith(roughness, NdotV, NdotL);
+        float F = 1.0f;
+
+        float pdf = sampleList.PDFs[i];
+
+        float fr = NDF * G * F / (std::max(4 * NdotV * NdotL, 0.001f));
+
+        A += fr * NdotL / pdf;      //其实fr的分母里就包含了NdotL，照理说NdotL可以约掉，
+        B += fr * NdotL / pdf;      //但是这样就不能表示其物理意义了
+        C += fr * NdotL / pdf; 
     }
 
     return {A / sample_count, B / sample_count, C / sample_count};

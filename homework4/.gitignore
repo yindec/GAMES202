@@ -1,2 +1,7 @@
 /.vscode/
 
+/lut-gen/build/*
+
+!/lut-gen/build/*.png
+
+/*.md
