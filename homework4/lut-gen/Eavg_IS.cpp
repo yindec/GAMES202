@@ -31,7 +31,26 @@ Vec3f ImportanceSampleGGX(Vec2f Xi, Vec3f N, float roughness) {
 
     // TODO: Copy the code from your previous work - Bonus 1
 
-    return Vec3f(1.0f);
+    //TODO: in spherical space - Bonus 1
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+
+    //TODO: from spherical space to cartesian space - Bonus 1
+    Vec3f H;
+    H.x = cos(phi)*sinTheta;
+    H.y = sin(phi)*sinTheta;
+    H.z = cosTheta;
+
+    //TODO: tangent coordinates - Bonus 1
+    // from tangent-space vector to world-space sample vector
+    Vec3f up        = abs(N.z) < 0.999 ? Vec3f(0.0, 0.0, 1.0) : Vec3f(1.0, 0.0, 0.0);
+    Vec3f tangent   = normalize(cross(up, N));
+    Vec3f bitangent = cross(N, tangent);
+
+    //TODO: transform H to tangent space - Bonus 1
+    Vec3f sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
 }
 
 
@@ -52,10 +71,10 @@ Vec3f IntegrateEmu(Vec3f V, float roughness, float NdotV, Vec3f Ei) {
         float NoV = std::max(dot(N, V), 0.0f);
 
         // TODO: To calculate Eavg here - Bonus 1
-        
+        Eavg += Ei * NoL *2.0f;
     }
 
-    return Vec3f(1.0);
+    return  Eavg / sample_count;
 }
 
 void setRGB(int x, int y, float alpha, unsigned char *data) {

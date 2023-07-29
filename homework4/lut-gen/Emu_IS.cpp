@@ -27,23 +27,36 @@ Vec3f ImportanceSampleGGX(Vec2f Xi, Vec3f N, float roughness) {
     float a = roughness * roughness;
 
     //TODO: in spherical space - Bonus 1
-
+    float phi = 2.0 * PI * Xi.x;
+    float cosTheta = sqrt((1.0 - Xi.y) / (1.0 + (a*a - 1.0) * Xi.y));
+    float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
 
     //TODO: from spherical space to cartesian space - Bonus 1
- 
+    Vec3f H;
+    H.x = cos(phi)*sinTheta;
+    H.y = sin(phi)*sinTheta;
+    H.z = cosTheta;
 
     //TODO: tangent coordinates - Bonus 1
-
+    // from tangent-space vector to world-space sample vector
+    Vec3f up        = abs(N.z) < 0.999 ? Vec3f(0.0, 0.0, 1.0) : Vec3f(1.0, 0.0, 0.0);
+    Vec3f tangent   = normalize(cross(up, N));
+    Vec3f bitangent = cross(N, tangent);
 
     //TODO: transform H to tangent space - Bonus 1
-    
-    return Vec3f(1.0f);
+    Vec3f sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
+    return normalize(sampleVec);
 }
 
 float GeometrySchlickGGX(float NdotV, float roughness) {
     // TODO: To calculate Schlick G1 here - Bonus 1
-    
-    return 1.0f;
+    float a = roughness;
+    float k = (a * a) / 2.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
 }
 
 float GeometrySmith(float roughness, float NoV, float NoL) {
@@ -54,7 +67,7 @@ float GeometrySmith(float roughness, float NoV, float NoL) {
 }
 
 Vec3f IntegrateBRDF(Vec3f V, float roughness) {
-
+    Vec3f E_mu(0.0f);
     const int sample_count = 1024;
     Vec3f N = Vec3f(0.0, 0.0, 1.0);
     for (int i = 0; i < sample_count; i++) {
@@ -68,13 +81,14 @@ Vec3f IntegrateBRDF(Vec3f V, float roughness) {
         float NoV = std::max(dot(N, V), 0.0f);
         
         // TODO: To calculate (fr * ni) / p_o here - Bonus 1
-
+        float G = GeometrySmith(roughness, NoV, NoL);
+        float weigth_L = VoH * G / (NoV * NoH);
 
         // Split Sum - Bonus 2
-        
+        E_mu += Vec3f(1.0, 1.0, 1.0) * weigth_L;        
     }
 
-    return Vec3f(1.0f);
+    return E_mu / sample_count;
 }
 
 int main() {
