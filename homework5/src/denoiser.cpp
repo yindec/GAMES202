@@ -24,18 +24,22 @@ void Denoiser::Reprojection(const FrameInfo &frameInfo) {
             const Matrix4x4 &pre_local_to_world = m_preFrameInfo.m_matrix[id];
             auto position = frameInfo.m_position(x, y);
             //代码中一共做了3步变换，其中world_to_local对应 M_i^-1 ，pre_local_to_world对应 M_i-1，pre_World_To_Screen对应 P_i-1 * V_i-1。
-            auto screen_position = preWorldToScreen(pre_local_to_world(world_to_local(position, Float3::EType::Point), Float3::EType::Point) , Float3::EType::Point);
+            // 相当于下面这一行，但是内部嵌套太多，无法顺利运行，原因不明  
+            //auto screen_position = preWorldToScreen(pre_local_to_world(world_to_local(position, Float3::EType::Point), Float3::EType::Point) , Float3::EType::Point)
 
-            if (screen_position.x < 0 || screen_position.x >= width ||
-                screen_position.y < 0 || screen_position.y >= height )
+            auto world_position     = frameInfo.m_position(x, y);
+            auto pre_local_position = world_to_local(world_position, Float3::EType::Point);
+            auto pre_world_position = pre_local_to_world(pre_local_position, Float3::EType::Point);
+            auto pre_screen_position    = preWorldToScreen(pre_world_position, Float3::EType::Point);
+
+            if (pre_screen_position.x < 0 || pre_screen_position.x >= width ||
+                pre_screen_position.y < 0 || pre_screen_position.y >= height )
                 continue;
             else{
-                int pre_x = screen_position.x;
-                int pre_y = screen_position.y;
-                int pre_id = m_preFrameInfo.m_id(pre_x, pre_y);
+                int pre_id = m_preFrameInfo.m_id(pre_screen_position.x, pre_screen_position.y);
                 if(pre_id == id){
                     m_valid(x, y) = true;
-                    m_misc(x, y)  = m_accColor(pre_x, pre_y);
+                    m_misc(x, y)  = m_accColor(pre_screen_position.x, pre_screen_position.y);
                 }
             }
         }
@@ -46,7 +50,7 @@ void Denoiser::Reprojection(const FrameInfo &frameInfo) {
 void Denoiser::TemporalAccumulation(const Buffer2D<Float3> &curFilteredColor) {
     int height = m_accColor.m_height;
     int width = m_accColor.m_width;
-    int kernelRadius = 3;
+    int kernelRadius = 7;
 #pragma omp parallel for
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -54,6 +58,32 @@ void Denoiser::TemporalAccumulation(const Buffer2D<Float3> &curFilteredColor) {
             Float3 color = m_accColor(x, y);
             // TODO: Exponential moving average
             float alpha = 1.0f;
+
+            if (m_valid(x, y)){
+                alpha = m_alpha;
+
+                int x_start = std::max(x - kernelRadius, 0);
+                int x_end   = std::min(x + kernelRadius, width - 1);
+                int y_start = std::max(y - kernelRadius, 0);
+                int y_end   = std::min(y + kernelRadius, height - 1);
+
+                Float3 mu(0.f);
+                Float3 sigma(0.f);
+
+                for (int n = y_start; n <= y_end; ++n){
+                    for (int m = x_start; m <= x_end; ++m){
+                        mu += curFilteredColor(m, n);
+                        sigma += Sqr(curFilteredColor(x, y) - curFilteredColor(m, n));
+                    }
+                }
+
+                int count = kernelRadius * 2 + 1;
+                count *= count;
+                mu   /= float(count);
+                sigma = SafeSqrt(sigma / float(count));
+                color = Clamp(color, mu - sigma * m_colorBoxK, mu + sigma * m_colorBoxK);
+            }
+
             m_misc(x, y) = Lerp(color, curFilteredColor(x, y), alpha);
         }
     }
