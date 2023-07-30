@@ -121,12 +121,9 @@ vec3 GetGBufferDiffuse(vec2 uv) {
  * uv is in screen space, [0, 1] x [0, 1].
  *
  */
-//对应渲染方程中的f_r
 vec3 EvalDiffuse(vec3 wi, vec3 wo, vec2 uv) {
-  vec3 albedo = GetGBufferDiffuse(uv);
-  vec3 normal = GetGBufferNormalWorld(uv);
-  float cos = max(0.0, dot(normal, wi));
-  return albedo * cos * INV_PI;
+  vec3 L = vec3(0.0);
+  return L;
 }
 
 /*
@@ -134,89 +131,22 @@ vec3 EvalDiffuse(vec3 wi, vec3 wo, vec2 uv) {
  * uv is in screen space, [0, 1] x [0, 1].
  *
  */
-//对应渲染方程中的L_i
 vec3 EvalDirectionalLight(vec2 uv) {
-  vec3 Le = GetGBufferuShadow(uv) * uLightRadiance;
+  vec3 Le = vec3(0.0);
   return Le;
 }
 
 bool RayMarch(vec3 ori, vec3 dir, out vec3 hitPos) {
-  float step = 0.05;
-  const int totalStepTimes = 150;
-  int curStepTimes = 0;
-
-  vec3 stepDir = normalize(dir) * step;
-  vec3 curPos = ori;
-  for (int curStepTimes = 0; curStepTimes < totalStepTimes; ++curStepTimes)
-  {
-    vec2 screenUV = GetScreenCoordinate(curPos);
-    float rayDepth = GetDepth(curPos);
-    float gBufferDepth = GetGBufferDepth(screenUV);
-
-    if(rayDepth - gBufferDepth > 0.0001){
-      hitPos = curPos;
-      return true;
-    }
-
-    curPos += stepDir;
-  }
-
   return false;
 }
 
-#define SAMPLE_NUM 3
-
-// test Screen Space Ray Tracing 
-vec3 EvalReflect(vec3 wi, vec3 wo, vec2 uv) {
-  vec3 worldNormal = GetGBufferNormalWorld(uv);
-  vec3 relfectDir = normalize(reflect(-wo, worldNormal));
-  vec3 hitPos;
-  if(RayMarch(vPosWorld.xyz, relfectDir, hitPos)){
-      vec2 screenUV = GetScreenCoordinate(hitPos);
-      return GetGBufferDiffuse(screenUV);
-  }
-  else{
-    return vec3(0.); 
-  }
-}
+#define SAMPLE_NUM 1
 
 void main() {
-  float s = InitRand(gl_FragCoord.xy);  //2.3 间接光照用到
+  float s = InitRand(gl_FragCoord.xy);
 
   vec3 L = vec3(0.0);
-  // L = GetGBufferDiffuse(GetScreenCoordinate(vPosWorld.xyz));
-
-  vec3 worldPos = vPosWorld.xyz;
-  vec2 screenUV = GetScreenCoordinate(vPosWorld.xyz);
-  vec3 wi = normalize(uLightDir);
-  vec3 wo = normalize(uCameraPos - worldPos);
-
-  // 直接光照
-  L = EvalDiffuse(wi, wo, screenUV) * EvalDirectionalLight(screenUV);
-
-  // Screen Space Ray Tracing 的反射测试
-  // L = (GetGBufferDiffuse(screenUV)  + EvalReflect(wi, wo, screenUV)) / 2.0;
-
-  vec3 L_ind = vec3(0.0);
-  for(int i = 0; i < SAMPLE_NUM; i++){
-    float pdf;
-    vec3 localDir = SampleHemisphereCos(s, pdf);
-    vec3 normal = GetGBufferNormalWorld(screenUV);
-    vec3 b1, b2;
-    LocalBasis(normal, b1, b2);
-    vec3 dir = normalize(mat3(b1, b2, normal) * localDir);
-
-    vec3 position_1;
-    if(RayMarch(worldPos, dir, position_1)){
-      vec2 hitScreenUV = GetScreenCoordinate(position_1);
-      L_ind += EvalDiffuse(dir, wo, screenUV) / pdf * EvalDiffuse(wi, dir, hitScreenUV) * EvalDirectionalLight(hitScreenUV);
-    }
-  }
-
-  L_ind /= float(SAMPLE_NUM);
-
-  L = L + L_ind;
-
+  L = GetGBufferDiffuse(GetScreenCoordinate(vPosWorld.xyz));
   vec3 color = pow(clamp(L, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
   gl_FragColor = vec4(vec3(color.rgb), 1.0);
 }
