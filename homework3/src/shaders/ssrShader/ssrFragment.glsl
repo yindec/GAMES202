@@ -175,6 +175,25 @@ void main() {
   // 直接光照
   L = EvalDiffuse(wi, wo, screenUV) * EvalDirectionalLight(screenUV);
 
+  vec3 L_indirect = vec3(0.0);
+  for (int i = 0; i < SAMPLE_NUM; ++i) {
+    float pdf;
+    vec3 localDir = SampleHemisphereCos(s, pdf);
+    vec3 normal   = GetGBufferNormalWorld(screenUV);
+    vec3 b1, b2;
+    LocalBasis(normal, b1, b2);
+    vec3 dir = normalize(mat3(b1, b2, normal) * localDir);
+
+    vec3 position_1;
+    if (RayMarch(vPosWorld.xyz, dir, position_1)) {
+      vec2 hitScreenUV = GetScreenCoordinate(position_1);
+      L_indirect += EvalDiffuse(dir, wo, screenUV) / pdf * EvalDiffuse(wi, dir, hitScreenUV) * EvalDirectionalLight(hitScreenUV);
+    }
+  }
+
+  L_indirect /= float(SAMPLE_NUM);
+
+  L += L_indirect;
   vec3 color = pow(clamp(L, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
   gl_FragColor = vec4(vec3(color.rgb), 1.0);
 }
