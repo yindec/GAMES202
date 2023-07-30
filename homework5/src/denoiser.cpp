@@ -15,6 +15,29 @@ void Denoiser::Reprojection(const FrameInfo &frameInfo) {
             // TODO: Reproject
             m_valid(x, y) = false;
             m_misc(x, y) = Float3(0.f);
+
+            int id = frameInfo.m_id(x, y);
+            if(id == -1)
+                continue;
+            
+            Matrix4x4 world_to_local = Inverse(frameInfo.m_matrix[id]);
+            const Matrix4x4 &pre_local_to_world = m_preFrameInfo.m_matrix[id];
+            auto position = frameInfo.m_position(x, y);
+            //代码中一共做了3步变换，其中world_to_local对应 M_i^-1 ，pre_local_to_world对应 M_i-1，pre_World_To_Screen对应 P_i-1 * V_i-1。
+            auto screen_position = preWorldToScreen(pre_local_to_world(world_to_local(position, Float3::EType::Point), Float3::EType::Point) , Float3::EType::Point);
+
+            if (screen_position.x < 0 || screen_position.x >= width ||
+                screen_position.y < 0 || screen_position.y >= height )
+                continue;
+            else{
+                int pre_x = screen_position.x;
+                int pre_y = screen_position.y;
+                int pre_id = m_preFrameInfo.m_id(pre_x, pre_y);
+                if(pre_id == id){
+                    m_valid(x, y) = true;
+                    m_misc(x, y)  = m_accColor(pre_x, pre_y);
+                }
+            }
         }
     }
     std::swap(m_misc, m_accColor);
