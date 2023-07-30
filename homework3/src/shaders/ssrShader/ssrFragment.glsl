@@ -121,9 +121,12 @@ vec3 GetGBufferDiffuse(vec2 uv) {
  * uv is in screen space, [0, 1] x [0, 1].
  *
  */
+//对应渲染方程中的 f_r
 vec3 EvalDiffuse(vec3 wi, vec3 wo, vec2 uv) {
-  vec3 L = vec3(0.0);
-  return L;
+  vec3 albedo = GetGBufferDiffuse(uv);
+  vec3 normal = GetGBufferNormalWorld(uv);
+  float cos = max(0.0, dot(normal, wi));    // wi代表光线方向。
+  return albedo * cos * INV_PI;
 }
 
 /*
@@ -131,8 +134,9 @@ vec3 EvalDiffuse(vec3 wi, vec3 wo, vec2 uv) {
  * uv is in screen space, [0, 1] x [0, 1].
  *
  */
+//对应渲染方程中的 L_i
 vec3 EvalDirectionalLight(vec2 uv) {
-  vec3 Le = vec3(0.0);
+  vec3 Le = GetGBufferuShadow(uv) * uLightRadiance;
   return Le;
 }
 
@@ -146,7 +150,13 @@ void main() {
   float s = InitRand(gl_FragCoord.xy);
 
   vec3 L = vec3(0.0);
-  L = GetGBufferDiffuse(GetScreenCoordinate(vPosWorld.xyz));
+  // L = GetGBufferDiffuse(GetScreenCoordinate(vPosWorld.xyz));
+
+  vec2 screenUV = GetScreenCoordinate(vPosWorld.xyz);
+  vec3 wi = normalize(uLightDir);
+  vec3 wo = normalize(uCameraPos - vPosWorld.xyz);
+  L = EvalDiffuse(wi, wo, screenUV) * EvalDirectionalLight(screenUV);
+
   vec3 color = pow(clamp(L, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
   gl_FragColor = vec4(vec3(color.rgb), 1.0);
 }
